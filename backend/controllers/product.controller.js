@@ -1,5 +1,4 @@
-
-const { Product, Category } = require("../models");
+const { Product, Category, SubCategory } = require("../models");
 const path = require("path");
 const fs = require("fs");
 
@@ -8,11 +7,13 @@ const fs = require("fs");
 // ===============================
 exports.createProduct = async (req, res) => {
   try {
-    const { name, price, quantity, description, rating, CategoryId } = req.body;
+    const { name, price, quantity, description, rating, categoryId, subCategoryId } = req.body;
     const image = req.file ? req.file.path.replace(/\\/g, "/") : null;
 
-    if (!name || !price || !CategoryId) {
-      return res.status(400).json({ message: "Name, price, and category are required" });
+    if (!name || !price || !categoryId || !subCategoryId) {
+      return res.status(400).json({
+        message: "Name, price, categoryId and subCategoryId are required",
+      });
     }
 
     const product = await Product.create({
@@ -22,7 +23,8 @@ exports.createProduct = async (req, res) => {
       description,
       rating,
       image,
-      CategoryId,
+      categoryId,
+      subCategoryId,
     });
 
     res.status(201).json(product);
@@ -38,7 +40,18 @@ exports.createProduct = async (req, res) => {
 exports.getAllProducts = async (req, res) => {
   try {
     const products = await Product.findAll({
-      include: [{ model: Category, attributes: ["id", "name"] }],
+      include: [
+        {
+          model: Category,
+          as: "category",
+          attributes: ["id", "name"],
+        },
+        {
+          model: SubCategory,
+          as: "subcategory",
+          attributes: ["id", "name"],
+        },
+      ],
       order: [["createdAt", "DESC"]],
     });
     res.status(200).json(products);
@@ -55,7 +68,18 @@ exports.getProductById = async (req, res) => {
   try {
     const { id } = req.params;
     const product = await Product.findByPk(id, {
-      include: [{ model: Category, attributes: ["id", "name"] }],
+      include: [
+        {
+          model: Category,
+          as: "category",
+          attributes: ["id", "name"],
+        },
+        {
+          model: SubCategory,
+          as: "subcategory",
+          attributes: ["id", "name"],
+        },
+      ],
     });
 
     if (!product) return res.status(404).json({ message: "Product not found" });
@@ -72,13 +96,13 @@ exports.getProductById = async (req, res) => {
 exports.updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, price, quantity, description, rating, CategoryId } = req.body;
+    const { name, price, quantity, description, rating, categoryId, subCategoryId } = req.body;
     const image = req.file ? req.file.path.replace(/\\/g, "/") : null;
 
     const product = await Product.findByPk(id);
     if (!product) return res.status(404).json({ message: "Product not found" });
 
-    // Delete old image if new one uploaded
+    // Delete old image if a new one is uploaded
     if (image && product.image) {
       const oldImagePath = path.join(__dirname, "..", product.image);
       if (fs.existsSync(oldImagePath)) fs.unlinkSync(oldImagePath);
@@ -91,7 +115,8 @@ exports.updateProduct = async (req, res) => {
       description,
       rating,
       image: image || product.image,
-      CategoryId,
+      categoryId,
+      subCategoryId,
     });
 
     res.status(200).json({ message: "Product updated successfully", product });
@@ -110,7 +135,7 @@ exports.deleteProduct = async (req, res) => {
     const product = await Product.findByPk(id);
     if (!product) return res.status(404).json({ message: "Product not found" });
 
-    // Delete image file
+    // Delete image file if it exists
     if (product.image) {
       const imagePath = path.join(__dirname, "..", product.image);
       if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);

@@ -7,8 +7,10 @@ module.exports = (sequelize, DataTypes) => {
   });
 
   Category.associate = (models) => {
-    Category.hasMany(models.Product, {
-      foreignKey: "CategoryId",
+    Category.hasMany(models.SubCategory, {
+      foreignKey: "categoryId",
+      as: "subcategories", // This alias must match in controller
+      onDelete: "CASCADE",
     });
   };
 

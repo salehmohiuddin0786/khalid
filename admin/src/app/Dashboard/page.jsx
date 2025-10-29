@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import Sidebar from "../Component/Sidebar";
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -7,8 +8,8 @@ const Dashboard = () => {
     products: 0,
   });
   const [products, setProducts] = useState([]);
+  const [categoriesMap, setCategoriesMap] = useState({});
 
-  // 🔹 Fetch dashboard data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -20,13 +21,19 @@ const Dashboard = () => {
         const categories = await catRes.json();
         const products = await prodRes.json();
 
+        // Map category ID to name
+        const catMap = {};
+        categories.forEach((cat) => {
+          catMap[cat.id] = cat.name;
+        });
+
+        setCategoriesMap(catMap);
         setStats({
           categories: categories.length,
           products: products.length,
         });
 
-        // Show only latest 5 products
-        setProducts(products.slice(-5).reverse());
+        setProducts(products.slice(-5).reverse()); // latest 5
       } catch (err) {
         console.error("Error fetching dashboard data:", err);
       }
@@ -36,91 +43,75 @@ const Dashboard = () => {
   }, []);
 
   return (
-    <div style={{ padding: "2rem" }}>
-      <h1>📊 Admin Dashboard</h1>
-
-      <div
-        style={{
-          display: "flex",
-          gap: "2rem",
-          marginTop: "2rem",
-          marginBottom: "2rem",
-        }}
-      >
-        <div
-          style={{
-            background: "#e3f2fd",
-            padding: "1rem",
-            borderRadius: "8px",
-            flex: 1,
-            textAlign: "center",
-          }}
-        >
-          <h2>{stats.categories}</h2>
-          <p>Categories</p>
-        </div>
-
-        <div
-          style={{
-            background: "#fce4ec",
-            padding: "1rem",
-            borderRadius: "8px",
-            flex: 1,
-            textAlign: "center",
-          }}
-        >
-          <h2>{stats.products}</h2>
-          <p>Products</p>
-        </div>
+    <div className="flex min-h-screen bg-slate-50">
+      {/* Sidebar */}
+      <div className="w-64 border-r border-slate-200">
+        <Sidebar />
       </div>
 
-      <h2>🆕 Latest Products</h2>
-      <table
-        border="1"
-        cellPadding="10"
-        style={{
-          width: "100%",
-          borderCollapse: "collapse",
-          marginTop: "1rem",
-        }}
-      >
-        <thead>
-          <tr style={{ backgroundColor: "#f5f5f5" }}>
-            <th>Image</th>
-            <th>Name</th>
-            <th>Category ID</th>
-            <th>Price</th>
-            <th>Quantity</th>
-          </tr>
-        </thead>
-        <tbody>
-          {products.length > 0 ? (
-            products.map((prod) => (
-              <tr key={prod.id}>
-                <td>
-                  <img
-                    src={`http://localhost:5000/${prod.image}`}
-                    alt={prod.name}
-                    width="60"
-                    height="60"
-                    style={{ objectFit: "cover", borderRadius: "5px" }}
-                  />
-                </td>
-                <td>{prod.name}</td>
-                <td>{prod.CategoryId}</td>
-                <td>${prod.price}</td>
-                <td>{prod.quantity}</td>
+      {/* Main Content */}
+      <div className="flex-1 p-8 overflow-y-auto">
+        <h1 className="text-3xl font-bold text-slate-800 mb-8">📊 Admin Dashboard</h1>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-10">
+          <div className="bg-blue-100 p-6 rounded-xl text-center shadow">
+            <h2 className="text-4xl font-bold text-blue-700">{stats.categories}</h2>
+            <p className="text-slate-700 mt-2">Total Categories</p>
+          </div>
+          <div className="bg-pink-100 p-6 rounded-xl text-center shadow">
+            <h2 className="text-4xl font-bold text-pink-700">{stats.products}</h2>
+            <p className="text-slate-700 mt-2">Total Products</p>
+          </div>
+        </div>
+
+        {/* Latest Products */}
+        <h2 className="text-2xl font-semibold text-slate-800 mb-4">🆕 Latest Products</h2>
+        <div className="overflow-auto rounded-lg shadow border border-slate-200">
+          <table className="min-w-full divide-y divide-slate-200">
+            <thead className="bg-slate-100">
+              <tr>
+                <th className="px-6 py-3 text-left text-sm font-medium text-slate-700">Image</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-slate-700">Name</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-slate-700">Category</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-slate-700">Price</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-slate-700">Quantity</th>
               </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="5" style={{ textAlign: "center" }}>
-                No products found
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+            </thead>
+            <tbody className="bg-white divide-y divide-slate-200">
+              {products.length > 0 ? (
+                products.map((prod) => (
+                  <tr key={prod.id}>
+                    <td className="px-6 py-4">
+                      <img
+                        src={`http://localhost:4000/${prod.image}`}
+                        alt={prod.name}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = ""; // optional fallback image
+                        }}
+                        className="w-16 h-16 object-cover rounded-md border"
+                      />
+                    </td>
+                    <td className="px-6 py-4 font-medium text-slate-800">{prod.name}</td>
+                    <td className="px-6 py-4 text-slate-600">
+                      {categoriesMap[prod.CategoryId] || "Unknown"}
+                    </td>
+                    <td className="px-6 py-4 text-green-600 font-semibold">${prod.price}</td>
+                    <td className="px-6 py-4 text-slate-600">{prod.quantity}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="5" className="text-center py-8 text-slate-500">
+                    No products found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };

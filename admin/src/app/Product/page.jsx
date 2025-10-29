@@ -15,9 +15,7 @@ import {
   Eye,
   ShoppingCart,
   Search,
-  Filter,
   RefreshCw,
-  ImageOff,
   X
 } from "lucide-react";
 
@@ -77,8 +75,6 @@ const AdminPage = () => {
     const file = e.target.files[0];
     if (file) {
       setForm({ ...form, image: file });
-      
-      // Create preview
       const reader = new FileReader();
       reader.onload = (e) => {
         setImagePreview(e.target.result);
@@ -94,36 +90,27 @@ const AdminPage = () => {
 
   const getImageUrl = (imagePath) => {
     if (!imagePath) return null;
-    
-    console.log("Original image path:", imagePath); // Debug log
-    
-    // If it's already a full URL, return as is
-    if (imagePath.startsWith('http')) {
-      return imagePath;
-    }
-    
-    // If it's a relative path, prepend the base URL
-    if (imagePath.startsWith('/')) {
-      return `${API_BASE_URL}${imagePath}`;
-    }
-    
-    // If it's just a filename, assume it's in uploads directory
-    return `${API_BASE_URL}/uploads/${imagePath}`;
+    return `${API_BASE_URL}/${imagePath}`;
   };
 
+  // Enhanced validation + submit handler
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.image) {
-      alert("Please upload an image");
-      return;
-    }
+
+    // Client-side validation checks
+    if (!form.name.trim()) return alert("Please enter product name");
+    if (!form.description.trim()) return alert("Please enter description");
+    if (!form.price || isNaN(parseFloat(form.price))) return alert("Please enter valid price");
+    if (!form.quantity || isNaN(parseInt(form.quantity))) return alert("Please enter valid quantity");
+    if (!form.category) return alert("Please select a category");
+    if (!form.image) return alert("Please upload an image");
 
     const formData = new FormData();
-    formData.append("name", form.name);
-    formData.append("description", form.description);
-    formData.append("price", form.price);
-    formData.append("quantity", form.quantity);
-    formData.append("CategoryId", form.category);
+    formData.append("name", form.name.trim());
+    formData.append("description", form.description.trim());
+    formData.append("price", parseFloat(form.price));
+    formData.append("quantity", parseInt(form.quantity, 10));
+    formData.append("categoryId", form.category);
     formData.append("image", form.image);
 
     setLoading(true);
@@ -132,35 +119,21 @@ const AdminPage = () => {
         method: "POST",
         body: formData,
       });
-      
+
       if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
+        const errorData = await res.json();
+        alert(`Failed to upload product: ${errorData.message || res.statusText}`);
+        setLoading(false);
+        return;
       }
-      
+
       const data = await res.json();
-      
       alert("✅ Product added successfully!");
-      
-      // Reset form
-      setForm({
-        name: "",
-        description: "",
-        price: "",
-        quantity: "",
-        category: "",
-        image: null,
-      });
-      setImagePreview(null);
-      
-      // Refresh products list
+      resetForm();
       fetchProducts();
-      
-      // Switch to products tab
       setActiveTab("products");
-      
     } catch (err) {
-      console.error("Error uploading product:", err);
-      alert("❌ Failed to upload product: " + err.message);
+      alert("An error occurred: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -168,12 +141,11 @@ const AdminPage = () => {
 
   const deleteProduct = async (productId) => {
     if (!confirm("Are you sure you want to delete this product?")) return;
-
     try {
       const res = await fetch(`${API_BASE_URL}/api/products/${productId}`, {
         method: "DELETE",
       });
-      
+
       if (res.ok) {
         alert("Product deleted successfully!");
         fetchProducts();
@@ -181,7 +153,6 @@ const AdminPage = () => {
         throw new Error(`HTTP error! status: ${res.status}`);
       }
     } catch (err) {
-      console.error("Error deleting product:", err);
       alert("Failed to delete product: " + err.message);
     }
   };
@@ -203,42 +174,53 @@ const AdminPage = () => {
     setImagePreview(null);
   };
 
+  const isSubmitDisabled =
+    loading ||
+    !form.name.trim() ||
+    !form.description.trim() ||
+    !form.price ||
+    isNaN(parseFloat(form.price)) ||
+    !form.quantity ||
+    isNaN(parseInt(form.quantity)) ||
+    !form.category ||
+    !form.image;
+
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      {/* Sidebar */}
+    <div className="flex min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="w-64 flex-shrink-0">
         <Sidebar />
       </div>
 
-      {/* Main content */}
       <div className="flex-1 p-8">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <ShoppingCart size={32} className="text-blue-600" />
+              <div className="p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl text-white">
+                <ShoppingCart size={32} />
+              </div>
               Product Management
             </h1>
-            <p className="text-gray-600 mt-2">
-              Manage your products and inventory
+            <p className="text-gray-600 mt-2 text-lg">
+              Manage your products and inventory efficiently
             </p>
           </div>
           <button
             onClick={fetchProducts}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            className="flex items-center gap-2 px-4 py-3 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-200 text-gray-700 font-semibold shadow-sm"
           >
             <RefreshCw size={18} />
-            Refresh
+            Refresh Data
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-4 mb-8 border-b border-gray-200 pb-2">
+        <div className="flex gap-2 mb-8 bg-white p-2 rounded-2xl shadow-sm border border-gray-200 w-fit">
           <button
             onClick={() => setActiveTab("upload")}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${
-              activeTab === "upload" 
-                ? "bg-blue-600 text-white shadow-md" 
+            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
+              activeTab === "upload"
+                ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md"
                 : "text-gray-600 hover:bg-gray-100"
             }`}
           >
@@ -247,9 +229,9 @@ const AdminPage = () => {
           </button>
           <button
             onClick={() => setActiveTab("products")}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${
-              activeTab === "products" 
-                ? "bg-blue-600 text-white shadow-md" 
+            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
+              activeTab === "products"
+                ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md"
                 : "text-gray-600 hover:bg-gray-100"
             }`}
           >
@@ -260,18 +242,22 @@ const AdminPage = () => {
 
         {/* Upload Product Form */}
         {activeTab === "upload" && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-            <h2 className="text-2xl font-semibold text-gray-900 flex items-center gap-3 mb-6">
-              <Plus size={24} className="text-blue-600" />
-              Add New Product
-            </h2>
-
-            <form onSubmit={handleSubmit} className="flex flex-col gap-6 max-w-2xl">
-              {/* Product Name */}
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8 max-w-2xl">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-blue-100 rounded-xl">
+                <Plus size={24} className="text-blue-600" />
+              </div>
               <div>
-                <label className="flex items-center gap-2 font-medium text-gray-700 mb-2">
-                  <Package size={18} />
-                  Product Name
+                <h2 className="text-2xl font-bold text-gray-900">Add New Product</h2>
+                <p className="text-gray-600">Fill in the details to add a new product</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+              <div>
+                <label className="flex items-center gap-2 font-semibold text-gray-700 mb-3">
+                  <Package size={20} className="text-blue-600" />
+                  Product Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -280,15 +266,14 @@ const AdminPage = () => {
                   value={form.name}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50"
                 />
               </div>
 
-              {/* Description */}
               <div>
-                <label className="flex items-center gap-2 font-medium text-gray-700 mb-2">
-                  <FileText size={18} />
-                  Description
+                <label className="flex items-center gap-2 font-semibold text-gray-700 mb-3">
+                  <FileText size={20} className="text-blue-600" />
+                  Description <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   name="description"
@@ -297,16 +282,15 @@ const AdminPage = () => {
                   onChange={handleChange}
                   required
                   rows={4}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-vertical"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 resize-vertical"
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Price */}
                 <div>
-                  <label className="flex items-center gap-2 font-medium text-gray-700 mb-2">
-                    <DollarSign size={18} />
-                    Price
+                  <label className="flex items-center gap-2 font-semibold text-gray-700 mb-3">
+                    <DollarSign size={20} className="text-green-600" />
+                    Price <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -317,15 +301,14 @@ const AdminPage = () => {
                     required
                     min="0"
                     step="0.01"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50"
                   />
                 </div>
 
-                {/* Quantity */}
                 <div>
-                  <label className="flex items-center gap-2 font-medium text-gray-700 mb-2">
-                    <Hash size={18} />
-                    Quantity
+                  <label className="flex items-center gap-2 font-semibold text-gray-700 mb-3">
+                    <Hash size={20} className="text-purple-600" />
+                    Quantity <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -335,23 +318,22 @@ const AdminPage = () => {
                     onChange={handleChange}
                     required
                     min="0"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50"
                   />
                 </div>
               </div>
 
-              {/* Category */}
               <div>
-                <label className="flex items-center gap-2 font-medium text-gray-700 mb-2">
-                  <FolderOpen size={18} />
-                  Category
+                <label className="flex items-center gap-2 font-semibold text-gray-700 mb-3">
+                  <FolderOpen size={20} className="text-orange-600" />
+                  Category <span className="text-red-500">*</span>
                 </label>
                 <select
                   name="category"
                   value={form.category}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50"
                 >
                   <option value="">Select Category</option>
                   {categories.map((cat) => (
@@ -362,30 +344,29 @@ const AdminPage = () => {
                 </select>
               </div>
 
-              {/* Image Upload */}
               <div>
-                <label className="flex items-center gap-2 font-medium text-gray-700 mb-2">
-                  <ImageIcon size={18} />
-                  Product Image
+                <label className="flex items-center gap-2 font-semibold text-gray-700 mb-3">
+                  <ImageIcon size={20} className="text-pink-600" />
+                  Product Image <span className="text-red-500">*</span>
                 </label>
-                
+
                 {imagePreview ? (
                   <div className="relative inline-block">
                     <img
                       src={imagePreview}
                       alt="Preview"
-                      className="w-48 h-48 object-cover rounded-lg border-2 border-gray-300"
+                      className="w-64 h-64 object-cover rounded-2xl border-2 border-gray-300 shadow-sm"
                     />
                     <button
                       type="button"
                       onClick={removeImage}
-                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-600 transition-colors"
+                      className="absolute top-3 right-3 bg-red-500 text-white rounded-full w-10 h-10 flex items-center justify-center hover:bg-red-600 transition-all duration-200 shadow-lg"
                     >
-                      <X size={16} />
+                      <X size={20} />
                     </button>
                   </div>
                 ) : (
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center transition-all hover:border-blue-400 bg-gray-50">
+                  <div className="border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center transition-all duration-200 hover:border-blue-400 bg-gray-50 hover:bg-blue-50">
                     <input
                       type="file"
                       accept="image/*"
@@ -394,11 +375,11 @@ const AdminPage = () => {
                       id="file-upload"
                     />
                     <label htmlFor="file-upload" className="cursor-pointer">
-                      <ImageIcon size={48} className="text-gray-400 mx-auto mb-4" />
-                      <div className="text-gray-700 font-medium">
+                      <ImageIcon size={64} className="text-gray-400 mx-auto mb-4" />
+                      <div className="text-gray-700 font-semibold text-lg mb-2">
                         Click to upload product image
                       </div>
-                      <div className="text-gray-500 text-sm mt-2">
+                      <div className="text-gray-500 text-sm">
                         PNG, JPG, JPEG up to 5MB
                       </div>
                     </label>
@@ -406,25 +387,26 @@ const AdminPage = () => {
                 )}
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-4 mt-4">
+              <div className="flex gap-4 mt-6">
                 <button 
                   type="button"
                   onClick={resetForm}
                   disabled={loading}
-                  className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Reset
+                  Reset Form
                 </button>
                 
                 <button 
                   type="submit" 
-                  disabled={loading}
-                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  disabled={isSubmitDisabled}
+                  className={`flex-1 px-6 py-4 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                    isSubmitDisabled ? 'bg-gray-400' : 'bg-gradient-to-r from-blue-600 to-purple-600'
+                  } flex items-center justify-center gap-3 shadow-lg`}
                 >
                   {loading ? (
                     <>
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       Uploading...
                     </>
                   ) : (
@@ -441,13 +423,18 @@ const AdminPage = () => {
 
         {/* Products List */}
         {activeTab === "products" && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-semibold text-gray-900 flex items-center gap-3">
-                <Package size={24} className="text-blue-600" />
-                All Products ({filteredProducts.length})
-              </h2>
-              <div className="flex gap-4 items-center">
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-blue-100 rounded-xl">
+                  <Package size={24} className="text-blue-600" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">All Products</h2>
+                                  <p className="text-gray-600">{filteredProducts.length} products found</p>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
                 <div className="relative">
                   <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                   <input
@@ -455,106 +442,105 @@ const AdminPage = () => {
                     placeholder="Search products..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
+                    className="pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full lg:w-80 bg-gray-50"
                   />
                 </div>
                 <button
                   onClick={() => setActiveTab("upload")}
-                  className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-200 font-semibold shadow-lg whitespace-nowrap"
                 >
-                  <Plus size={18} />
-                  Add New
+                  <Plus size={20} />
+                  Add New Product
                 </button>
               </div>
             </div>
 
             {productsLoading ? (
-              <div className="flex justify-center items-center py-12">
-                <div className="w-10 h-10 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
+              <div className="flex justify-center items-center py-16">
+                <div className="w-12 h-12 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
               </div>
             ) : filteredProducts.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                <Package size={48} className="mx-auto mb-4 opacity-50" />
-                <h3 className="text-xl mb-2">
+              <div className="text-center py-16 text-gray-500">
+                <Package size={64} className="mx-auto mb-4 opacity-50" />
+                <h3 className="text-2xl font-semibold mb-3">
                   {searchTerm ? "No products found" : "No products yet"}
                 </h3>
-                <p>
-                  {searchTerm ? "Try adjusting your search" : "Get started by uploading your first product!"}
+                <p className="text-lg">
+                  {searchTerm
+                    ? "Try adjusting your search terms"
+                    : "Get started by uploading your first product!"}
                 </p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="grid gap-4">
                 {filteredProducts.map((product) => {
                   const imageUrl = getImageUrl(product.image);
-                  console.log("Product image URL:", imageUrl); // Debug log
-                  
+
                   return (
                     <div
                       key={product.id}
-                      className="flex items-center gap-6 p-6 border border-gray-200 rounded-xl hover:shadow-md transition-all bg-white"
+                      className="flex flex-col sm:flex-row items-start sm:items-center gap-6 p-6 border border-gray-200 rounded-2xl hover:shadow-lg transition-all duration-200 bg-white group"
                     >
                       {/* Image Container */}
-                      <div className="w-20 h-20 rounded-lg bg-gray-100 border border-gray-300 flex items-center justify-center overflow-hidden flex-shrink-0">
+                      <div className="w-24 h-24 rounded-xl bg-gray-100 border border-gray-300 flex items-center justify-center overflow-hidden flex-shrink-0">
                         {imageUrl ? (
                           <img
                             src={imageUrl}
                             alt={product.name}
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                              console.error("Image failed to load:", imageUrl);
                               e.target.style.display = 'none';
-                              // Show fallback icon
-                              const fallback = e.target.nextSibling;
-                              if (fallback) fallback.style.display = 'flex';
                             }}
                           />
-                        ) : null}
-                        <div className={`${imageUrl ? 'hidden' : 'flex'} items-center justify-center w-full h-full`}>
-                          <ImageOff size={32} className="text-gray-400" />
-                        </div>
+                        ) : (
+                          <div className="flex items-center justify-center w-full h-full">
+                            <ImageIcon size={32} className="text-gray-400" />
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-lg font-semibold text-gray-900 mb-2 truncate">
+                        <h4 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
                           {product.name}
                         </h4>
-                        <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                        <p className="text-gray-600 mb-4 line-clamp-2">
                           {product.description}
                         </p>
-                        <div className="flex gap-6 text-sm">
-                          <span className="flex items-center gap-1 text-green-600 font-semibold">
+                        <div className="flex flex-wrap gap-4 text-sm">
+                          <span className="flex items-center gap-2 text-green-600 font-bold">
                             <DollarSign size={16} />
-                            ${product.price}
+                            ${parseFloat(product.price).toFixed(2)}
                           </span>
-                          <span className="flex items-center gap-1 text-blue-600 font-medium">
+                          <span className="flex items-center gap-2 text-blue-600 font-semibold">
                             <Hash size={16} />
                             {product.quantity} in stock
                           </span>
-                          <span className="text-gray-500">
-                            Category: {product.Category?.name || "Uncategorized"}
+                          <span className="flex items-center gap-2 text-gray-500">
+                            <FolderOpen size={16} />
+                            {product.Category?.name || "Uncategorized"}
                           </span>
                         </div>
                       </div>
 
                       <div className="flex gap-2 flex-shrink-0">
                         <button
-                          className="p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                          className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 shadow-sm"
                           title="View Product"
                         >
-                          <Eye size={18} />
+                          <Eye size={20} />
                         </button>
                         <button
-                          className="p-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
+                          className="p-3 bg-yellow-500 text-white rounded-xl hover:bg-yellow-600 transition-all duration-200 shadow-sm"
                           title="Edit Product"
                         >
-                          <Edit size={18} />
+                          <Edit size={20} />
                         </button>
                         <button
                           onClick={() => deleteProduct(product.id)}
-                          className="p-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                          className="p-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all duration-200 shadow-sm"
                           title="Delete Product"
                         >
-                          <Trash2 size={18} />
+                          <Trash2 size={20} />
                         </button>
                       </div>
                     </div>
@@ -570,3 +556,4 @@ const AdminPage = () => {
 };
 
 export default AdminPage;
+

@@ -23,12 +23,18 @@ module.exports = (sequelize, DataTypes) => {
     description: {
       type: DataTypes.TEXT,
     },
+    // 🆕 Foreign key to SubCategory
+    subCategoryId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
   });
 
-  // 🔹 Define relation with Category model
+  // 🔁 Define relation with SubCategory instead of Category
   Product.associate = (models) => {
-    Product.belongsTo(models.Category, {
-      foreignKey: "CategoryId",
+    Product.belongsTo(models.SubCategory, {
+      foreignKey: "subCategoryId",
+      as: "subcategory",
       onDelete: "CASCADE",
     });
   };

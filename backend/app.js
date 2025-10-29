@@ -7,7 +7,7 @@ const productRoutes = require('./routes/product.routes');
 const cors = require('cors');
 
 // Setup allowed origins from environment or fallback
-const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3001'];
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3001', 'http://localhost:3000'];
 
 app.use(cors({
   origin: allowedOrigins,

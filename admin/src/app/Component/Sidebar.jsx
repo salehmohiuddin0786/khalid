@@ -13,7 +13,7 @@ const Sidebar = () => {
     { id: "womens", icon: "👗", label: "Women's Fashion", link: "/Women" },
     { id: "kids", icon: "👶", label: "Kids & Baby", link: "/Kids" },
     { id: "category", icon: "📂", label: "Categories", link: "/Category" },
-    { id: "products", icon: "🛒", label: "Products", link: "/Products" },
+    { id: "products", icon: "🛒", label: "Products", link: "/Product" },
   ];
 
   const adminItems = [
