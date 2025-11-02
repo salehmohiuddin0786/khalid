@@ -8,7 +8,6 @@ const Dashboard = () => {
     products: 0,
   });
   const [products, setProducts] = useState([]);
-  const [categoriesMap, setCategoriesMap] = useState({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -19,21 +18,14 @@ const Dashboard = () => {
         ]);
 
         const categories = await catRes.json();
-        const products = await prodRes.json();
+        const latestProducts = await prodRes.json();
 
-        // Map category ID to name
-        const catMap = {};
-        categories.forEach((cat) => {
-          catMap[cat.id] = cat.name;
-        });
-
-        setCategoriesMap(catMap);
         setStats({
           categories: categories.length,
-          products: products.length,
+          products: latestProducts.length,
         });
 
-        setProducts(products.slice(-5).reverse()); // latest 5
+        setProducts(latestProducts.slice(0, 5)); // ✅ Latest 5
       } catch (err) {
         console.error("Error fetching dashboard data:", err);
       }
@@ -84,18 +76,15 @@ const Dashboard = () => {
                   <tr key={prod.id}>
                     <td className="px-6 py-4">
                       <img
-                        src={`http://localhost:4000/${prod.image}`}
+                        src={prod.image} // ✅ Fixed
                         alt={prod.name}
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = ""; // optional fallback image
-                        }}
+                        onError={(e) => (e.target.src = "/no-image.png")}
                         className="w-16 h-16 object-cover rounded-md border"
                       />
                     </td>
                     <td className="px-6 py-4 font-medium text-slate-800">{prod.name}</td>
                     <td className="px-6 py-4 text-slate-600">
-                      {categoriesMap[prod.CategoryId] || "Unknown"}
+                      {prod.category?.name || "Unknown"}
                     </td>
                     <td className="px-6 py-4 text-green-600 font-semibold">${prod.price}</td>
                     <td className="px-6 py-4 text-slate-600">{prod.quantity}</td>

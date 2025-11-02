@@ -2,13 +2,17 @@ const { Product, Category, SubCategory } = require("../models");
 const path = require("path");
 const fs = require("fs");
 
+// ✅ Helper to generate full public URL for images
+const getImageUrl = (req, filename) => {
+  return `${req.protocol}://${req.get("host")}/uploads/${filename}`;
+};
+
 // ===============================
 // 📦 Create Product
 // ===============================
 exports.createProduct = async (req, res) => {
   try {
     const { name, price, quantity, description, rating, categoryId, subCategoryId } = req.body;
-    const image = req.file ? req.file.path.replace(/\\/g, "/") : null;
 
     if (!name || !price || !categoryId || !subCategoryId) {
       return res.status(400).json({
@@ -16,13 +20,15 @@ exports.createProduct = async (req, res) => {
       });
     }
 
+    const imageUrl = req.file ? getImageUrl(req, req.file.filename) : null;
+
     const product = await Product.create({
       name,
       price,
       quantity,
       description,
       rating,
-      image,
+      image: imageUrl,
       categoryId,
       subCategoryId,
     });
@@ -41,19 +47,12 @@ exports.getAllProducts = async (req, res) => {
   try {
     const products = await Product.findAll({
       include: [
-        {
-          model: Category,
-          as: "category",
-          attributes: ["id", "name"],
-        },
-        {
-          model: SubCategory,
-          as: "subcategory",
-          attributes: ["id", "name"],
-        },
+        { model: Category, as: "category", attributes: ["id", "name"] },
+        { model: SubCategory, as: "subcategory", attributes: ["id", "name"] },
       ],
       order: [["createdAt", "DESC"]],
     });
+
     res.status(200).json(products);
   } catch (error) {
     console.error("Error fetching products:", error);
@@ -69,16 +68,8 @@ exports.getProductById = async (req, res) => {
     const { id } = req.params;
     const product = await Product.findByPk(id, {
       include: [
-        {
-          model: Category,
-          as: "category",
-          attributes: ["id", "name"],
-        },
-        {
-          model: SubCategory,
-          as: "subcategory",
-          attributes: ["id", "name"],
-        },
+        { model: Category, as: "category", attributes: ["id", "name"] },
+        { model: SubCategory, as: "subcategory", attributes: ["id", "name"] },
       ],
     });
 
@@ -97,15 +88,20 @@ exports.updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
     const { name, price, quantity, description, rating, categoryId, subCategoryId } = req.body;
-    const image = req.file ? req.file.path.replace(/\\/g, "/") : null;
 
     const product = await Product.findByPk(id);
     if (!product) return res.status(404).json({ message: "Product not found" });
 
-    // Delete old image if a new one is uploaded
-    if (image && product.image) {
-      const oldImagePath = path.join(__dirname, "..", product.image);
-      if (fs.existsSync(oldImagePath)) fs.unlinkSync(oldImagePath);
+    let imageUrl = product.image;
+
+    if (req.file) {
+      // ✅ If new image uploaded — remove the old one
+      if (product.image) {
+        const oldFile = product.image.split("/uploads/")[1];
+        const oldImgPath = path.join("uploads", oldFile);
+        if (fs.existsSync(oldImgPath)) fs.unlinkSync(oldImgPath);
+      }
+      imageUrl = getImageUrl(req, req.file.filename);
     }
 
     await product.update({
@@ -114,7 +110,7 @@ exports.updateProduct = async (req, res) => {
       quantity,
       description,
       rating,
-      image: image || product.image,
+      image: imageUrl,
       categoryId,
       subCategoryId,
     });
@@ -132,13 +128,15 @@ exports.updateProduct = async (req, res) => {
 exports.deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
+
     const product = await Product.findByPk(id);
     if (!product) return res.status(404).json({ message: "Product not found" });
 
-    // Delete image file if it exists
+    // ✅ Remove image file properly
     if (product.image) {
-      const imagePath = path.join(__dirname, "..", product.image);
-      if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+      const file = product.image.split("/uploads/")[1];
+      const imgPath = path.join("uploads", file);
+      if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
     }
 
     await product.destroy();

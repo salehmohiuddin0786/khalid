@@ -1,368 +1,318 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-
-const womensWear = [
-  {
-    id: "1",
-    name: "Elegant Silk Saree",
-    price: "₹3,500",
-    originalPrice: "₹4,500",
-    imageUrl: "/images/women-saree1.jpg",
-    category: "Silk",
-    rating: 4.8,
-    reviews: 124,
-    isNew: true,
-    isBestseller: true,
-    sizes: ["S", "M", "L", "XL"],
-    colors: ["Red", "Blue", "Green"],
-    discount: "22% off",
-  },
-  {
-    id: "2",
-    name: "Designer Georgette Saree",
-    price: "₹4,200",
-    originalPrice: "₹5,500",
-    imageUrl: "/images/women-saree2.jpg",
-    category: "Georgette",
-    rating: 4.9,
-    reviews: 89,
-    isNew: false,
-    isBestseller: true,
-    sizes: ["M", "L", "XL"],
-    colors: ["Pink", "Purple", "Black"],
-    discount: "24% off",
-  },
-  {
-    id: "3",
-    name: "Casual Cotton Saree",
-    price: "₹1,800",
-    originalPrice: "₹2,400",
-    imageUrl: "/images/women-saree3.jpg",
-    category: "Cotton",
-    rating: 4.7,
-    reviews: 203,
-    isNew: true,
-    isBestseller: false,
-    sizes: ["S", "M", "L"],
-    colors: ["White", "Blue", "Yellow"],
-    discount: "25% off",
-  },
-  {
-    id: "4",
-    name: "Party Wear Saree",
-    price: "₹5,000",
-    originalPrice: "₹6,500",
-    imageUrl: "/images/women-saree4.jpg",
-    category: "Designer",
-    rating: 4.6,
-    reviews: 67,
-    isNew: false,
-    isBestseller: false,
-    sizes: ["S", "M", "L", "XL"],
-    colors: ["Gold", "Silver", "Maroon"],
-    discount: "23% off",
-  },
-  {
-    id: "5",
-    name: "Banarasi Silk Saree",
-    price: "₹8,500",
-    originalPrice: "₹12,000",
-    imageUrl: "/images/women-saree5.jpg",
-    category: "Banarasi",
-    rating: 4.9,
-    reviews: 45,
-    isNew: true,
-    isBestseller: true,
-    sizes: ["M", "L"],
-    colors: ["Red", "Green"],
-    discount: "29% off",
-  },
-  {
-    id: "6",
-    name: "Traditional Kanjivaram",
-    price: "₹7,200",
-    originalPrice: "₹9,000",
-    imageUrl: "/images/women-saree6.jpg",
-    category: "Kanjivaram",
-    rating: 4.8,
-    reviews: 78,
-    isNew: false,
-    isBestseller: true,
-    sizes: ["S", "M", "L", "XL"],
-    colors: ["Orange", "Pink"],
-    discount: "20% off",
-  },
-  {
-    id: "7",
-    name: "Chiffon Evening Saree",
-    price: "₹3,800",
-    originalPrice: "₹4,800",
-    imageUrl: "/images/women-saree7.jpg",
-    category: "Chiffon",
-    rating: 4.5,
-    reviews: 92,
-    isNew: true,
-    isBestseller: false,
-    sizes: ["S", "M", "L"],
-    colors: ["Black", "Navy", "Burgundy"],
-    discount: "21% off",
-  },
-  {
-    id: "8",
-    name: "Wedding Collection Saree",
-    price: "₹12,500",
-    originalPrice: "₹16,000",
-    imageUrl: "/images/women-saree8.jpg",
-    category: "Bridal",
-    rating: 4.9,
-    reviews: 34,
-    isNew: false,
-    isBestseller: true,
-    sizes: ["M", "L"],
-    colors: ["Red", "Gold"],
-    discount: "22% off",
-  },
-];
-
-const categories = [
-  { name: "All", count: womensWear.length },
-  { name: "Silk", count: womensWear.filter((i) => i.category === "Silk").length },
-  { name: "Cotton", count: womensWear.filter((i) => i.category === "Cotton").length },
-  { name: "Designer", count: womensWear.filter((i) => i.category === "Designer").length },
-  { name: "Bridal", count: womensWear.filter((i) => i.category === "Bridal").length },
-];
+import axios from "axios";
+import { 
+  Sparkles, 
+  Filter, 
+  Star, 
+  Heart, 
+  Zap, 
+  Crown, 
+  ShoppingBag,
+  ArrowRight,
+  ChevronDown,
+  TrendingUp,
+  Clock,
+  Shield,
+  Truck
+} from "lucide-react";
 
 const WomensWear = () => {
-  const [activeCategory, setActiveCategory] = useState("All");
+  const [products, setProducts] = useState([]);
   const [sortBy, setSortBy] = useState("featured");
+  const [loading, setLoading] = useState(true);
+  const [favorites, setFavorites] = useState(new Set());
 
-  const filteredProducts =
-    activeCategory === "All"
-      ? womensWear
-      : womensWear.filter((item) => item.category === activeCategory);
+  const API_URL = "http://localhost:4000/api/products";
 
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const res = await axios.get(API_URL);
+
+        const updatedData = res.data.map((item) => {
+          if (!item.image.startsWith("http")) {
+            const imgPart = item.image.split("uploads/")[1];
+            item.image = `http://localhost:4000/uploads/${imgPart}`;
+          }
+          return item;
+        });
+
+        setProducts(
+          updatedData.filter((p) => p.category?.name === "Women")
+        );
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  const toggleFavorite = (productId) => {
+    setFavorites(prev => {
+      const newFavorites = new Set(prev);
+      if (newFavorites.has(productId)) {
+        newFavorites.delete(productId);
+      } else {
+        newFavorites.add(productId);
+      }
+      return newFavorites;
+    });
+  };
+
+  const sortedProducts = [...products].sort((a, b) => {
     switch (sortBy) {
       case "price-low":
-        return parseInt(a.price.replace(/[₹,]/g, "")) - parseInt(b.price.replace(/[₹,]/g, ""));
+        return a.price - b.price;
       case "price-high":
-        return parseInt(b.price.replace(/[₹,]/g, "")) - parseInt(a.price.replace(/[₹,]/g, ""));
+        return b.price - a.price;
       case "rating":
-        return b.rating - a.rating;
+        return (b.rating || 0) - (a.rating || 0);
       default:
         return 0;
     }
   });
 
+  const LoadingSkeleton = () => (
+    <div className="max-w-7xl mx-auto px-6 py-16">
+      <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {[...Array(8)].map((_, i) => (
+          <div key={i} className="bg-white rounded-3xl shadow-lg overflow-hidden border border-gray-100">
+            <div className="h-72 bg-gradient-to-br from-rose-50 to-pink-50 animate-pulse"></div>
+            <div className="p-6 space-y-4">
+              <div className="h-4 bg-gray-200 rounded animate-pulse w-2/3"></div>
+              <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-8 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-12 bg-gray-200 rounded-2xl animate-pulse"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  if (loading) return <LoadingSkeleton />;
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-rose-50/30">
-      {/* Hero Section */}
-      <section className="relative py-20 bg-gradient-to-r from-rose-600 to-pink-600 text-white overflow-hidden">
-        <div className="absolute inset-0 bg-black/20"></div>
-        <div className="absolute top-0 left-0 w-72 h-72 bg-rose-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
-        <div className="absolute bottom-0 right-0 w-72 h-72 bg-pink-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse delay-2000"></div>
-
+      {/* Enhanced Hero Section */}
+      <section className="relative py-24 bg-gradient-to-br from-rose-500 via-pink-600 to-purple-600 text-white overflow-hidden">
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="absolute top-0 left-0 w-72 h-72 bg-white/10 rounded-full -translate-x-1/2 -translate-y-1/2"></div>
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/5 rounded-full translate-x-1/3 translate-y-1/3"></div>
+        
         <div className="relative max-w-7xl mx-auto px-6 text-center">
-          <h1 className="text-5xl md:text-6xl font-bold mb-6">
-            Women's <span className="text-rose-200">Fashion</span> Collection
-          </h1>
-          <p className="text-xl md:text-2xl max-w-3xl mx-auto opacity-95">
-            Discover exquisite sarees that celebrate your elegance and style
-          </p>
-        </div>
-      </section>
-
-      {/* Filter Bar */}
-      <section className="py-8 bg-white/80 backdrop-blur-sm sticky top-0 z-40 border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-          <div className="flex flex-wrap gap-3">
-            {categories.map((category) => (
-              <button
-                key={category.name}
-                onClick={() => setActiveCategory(category.name)}
-                className={`px-6 py-3 rounded-2xl font-semibold transition-all duration-300 transform hover:-translate-y-1 ${
-                  activeCategory === category.name
-                    ? "bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-lg"
-                    : "bg-white text-gray-700 hover:bg-gray-50 shadow-md hover:shadow-lg"
-                }`}
-              >
-                {category.name}
-                <span className="ml-2 text-sm opacity-80">({category.count})</span>
-              </button>
-            ))}
+          <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-6 py-3 rounded-full mb-6">
+            <Sparkles className="w-5 h-5" />
+            <span className="text-sm font-semibold">New Collection 2024</span>
           </div>
+          
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-white to-rose-100 bg-clip-text text-transparent">
+            Women's Fashion
+          </h1>
+          
+          <p className="text-xl md:text-2xl opacity-95 max-w-3xl mx-auto leading-relaxed mb-8">
+            Discover exquisite dresses and outfits that celebrate your unique beauty and style
+          </p>
 
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="px-4 py-3 bg-white border border-gray-300 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
-          >
-            <option value="featured">Featured</option>
-            <option value="price-low">Price: Low to High</option>
-            <option value="price-high">Price: High to Low</option>
-            <option value="rating">Top Rated</option>
-          </select>
+          {/* Stats */}
+          <div className="flex justify-center gap-12 mt-12">
+            <div className="text-center">
+              <div className="text-3xl font-bold flex items-center justify-center gap-2">
+                <Crown className="w-8 h-8" />
+                {products.length}+
+              </div>
+              <div className="text-white/80 text-sm mt-2">Premium Designs</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold flex items-center justify-center gap-2">
+                <Zap className="w-8 h-8" />
+                100%
+              </div>
+              <div className="text-white/80 text-sm mt-2">Quality Assured</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold flex items-center justify-center gap-2">
+                <Star className="w-8 h-8" />
+                4.8
+              </div>
+              <div className="text-white/80 text-sm mt-2">Customer Rating</div>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Product Grid */}
+      {/* Enhanced Sorting & Features */}
+      <section className="py-8 sticky top-0 bg-white/95 backdrop-blur-lg border-b shadow-lg z-40">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+            {/* Features */}
+            <div className="flex items-center gap-8">
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <Truck className="w-5 h-5 text-rose-600" />
+                Free Shipping
+              </div>
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <Shield className="w-5 h-5 text-rose-600" />
+                Secure Payment
+              </div>
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <Clock className="w-5 h-5 text-rose-600" />
+                24/7 Support
+              </div>
+            </div>
+
+            {/* Enhanced Sorting */}
+            <div className="flex items-center gap-4 bg-gray-50 rounded-2xl px-6 py-3 border border-gray-200">
+              <Filter className="w-5 h-5 text-gray-600" />
+              <span className="text-gray-600 font-medium">Sort by:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-transparent border-0 focus:ring-0 font-medium text-gray-800 cursor-pointer"
+              >
+                <option value="featured">⭐ Featured</option>
+                <option value="price-low">💰 Price: Low to High</option>
+                <option value="price-high">💎 Price: High to Low</option>
+                <option value="rating">🏆 Top Rated</option>
+              </select>
+              <ChevronDown className="w-4 h-4 text-gray-600" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Enhanced Products Grid */}
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              {activeCategory === "All" ? "All Products" : `${activeCategory} Sarees`}
+          {/* Results Header */}
+          <div className="flex justify-between items-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
+              <TrendingUp className="w-8 h-8 text-rose-600" />
+              Curated Collection
+              <span className="text-lg font-normal text-gray-600 ml-2">
+                ({sortedProducts.length} products)
+              </span>
             </h2>
-            <p className="text-gray-600 text-lg">
-              {sortedProducts.length} beautiful designs found
-            </p>
           </div>
 
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {sortedProducts.map((product) => (
               <div
                 key={product.id}
-                className="group relative bg-white rounded-3xl overflow-hidden shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-3"
+                className="group bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 overflow-hidden border border-gray-100"
               >
-                {/* Image */}
-                <div className="relative h-80 overflow-hidden">
+                {/* Enhanced Image Container */}
+                <div className="relative h-72 w-full bg-gradient-to-br from-rose-50 to-pink-50 overflow-hidden">
                   <Image
-                    src={product.imageUrl}
+                    src={product.image || "/no-image.png"}
                     alt={product.name}
                     fill
-                    sizes="(max-width: 768px) 100vw, 25vw"
-                    className="object-cover group-hover:scale-110 transition-transform duration-500"
+                    className="object-cover group-hover:scale-110 transition-transform duration-700"
+                    unoptimized
                   />
+                  
+                  {/* Gradient Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  
+                  {/* Favorite Button */}
+                  <button
+                    onClick={() => toggleFavorite(product.id)}
+                    className={`absolute top-4 right-4 p-3 rounded-2xl backdrop-blur-sm transition-all duration-300 transform hover:scale-110 ${
+                      favorites.has(product.id)
+                        ? "bg-rose-500 text-white shadow-lg shadow-rose-500/25"
+                        : "bg-white/90 text-gray-600 hover:bg-rose-50 hover:text-rose-500"
+                    }`}
+                  >
+                    <Heart 
+                      className={`w-5 h-5 ${favorites.has(product.id) ? "fill-current" : ""}`} 
+                    />
+                  </button>
 
-                  {/* Badges */}
-                  <div className="absolute top-4 left-4 flex flex-col gap-2">
-                    {product.isNew && (
-                      <span className="px-3 py-1 bg-green-500 text-white text-sm font-bold rounded-full shadow-lg">
-                        New
-                      </span>
-                    )}
-                    {product.isBestseller && (
-                      <span className="px-3 py-1 bg-amber-500 text-white text-sm font-bold rounded-full shadow-lg">
-                        Bestseller
-                      </span>
-                    )}
-                    <span className="px-3 py-1 bg-rose-500 text-white text-sm font-bold rounded-full shadow-lg">
-                      {product.discount}
-                    </span>
-                  </div>
-
-                  {/* Quick View */}
-                  <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <Link
-                      href={`/Women/${product.id}`}
-                      className="px-4 py-2 bg-white/90 rounded-xl text-gray-800 font-semibold hover:bg-rose-500 hover:text-white transition-all shadow-lg"
-                    >
-                      Quick View
-                    </Link>
-                  </div>
-                </div>
-
-                {/* Info */}
-                <div className="p-6">
-                  <h3 className="text-lg font-bold text-gray-900 group-hover:text-rose-600 transition-colors duration-300 line-clamp-2">
-                    {product.name}
-                  </h3>
-                  <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full mt-1 inline-block">
-                    {product.category}
-                  </span>
-
-                  <div className="flex items-center space-x-2 my-3">
-                    <span className="text-amber-400">★</span>
-                    <span className="text-sm font-semibold text-gray-700">
-                      {product.rating}
-                    </span>
-                    <span className="text-sm text-gray-500">
-                      ({product.reviews} reviews)
-                    </span>
-                  </div>
-
-                  <div className="flex items-center space-x-3 mb-4">
-                    <span className="text-2xl font-bold text-gray-900">
-                      {product.price}
-                    </span>
-                    <span className="text-lg text-gray-500 line-through">
-                      {product.originalPrice}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center space-x-2 mb-4">
-                    <span className="text-sm text-gray-500">Sizes:</span>
-                    <div className="flex space-x-1">
-                      {product.sizes.map((size, i) => (
-                        <span
-                          key={i}
-                          className="w-8 h-8 flex items-center justify-center text-xs font-semibold bg-gray-100 rounded-lg hover:bg-rose-500 hover:text-white cursor-pointer"
-                        >
-                          {size}
-                        </span>
-                      ))}
+                  {/* Price Badge */}
+                  <div className="absolute top-4 left-4">
+                    <div className="bg-white/95 backdrop-blur-sm text-rose-600 px-4 py-2 rounded-2xl text-lg font-bold shadow-lg">
+                      ₹{product.price}
                     </div>
                   </div>
 
-                  {/* Buttons */}
-                  <div className="flex space-x-3">
-                    <Link
-                      href={`/Women/${product.id}`}
-                      className="flex-1 bg-gradient-to-r from-rose-500 to-pink-500 text-white py-3 rounded-xl text-center font-semibold hover:from-rose-600 hover:to-pink-600 transition-all transform hover:-translate-y-1 shadow-lg"
-                    >
-                      View Details
-                    </Link>
-                    <button className="w-12 h-12 bg-gray-100 text-gray-700 rounded-xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-lg">
-                      🛒
-                    </button>
+                  {/* Rating Badge */}
+                  {product.rating && (
+                    <div className="absolute bottom-4 left-4 bg-black/70 text-white px-3 py-1.5 rounded-full text-sm font-semibold backdrop-blur-sm flex items-center gap-1">
+                      <Star className="w-4 h-4 fill-current" />
+                      {product.rating}
+                    </div>
+                  )}
+                </div>
+
+                {/* Enhanced Info Section */}
+                <div className="p-6">
+                  <h3 className="text-xl font-bold text-gray-800 mb-3 group-hover:text-rose-600 transition-colors duration-300 line-clamp-2 leading-tight">
+                    {product.name}
+                  </h3>
+
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">
+                    {product.description || "Elegant women's fashion piece designed for comfort and style."}
+                  </p>
+
+                  {/* Category Tag */}
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="bg-gradient-to-r from-rose-100 to-pink-100 text-rose-700 px-3 py-1.5 rounded-full text-xs font-semibold">
+                      {product.subcategory?.name || "Fashion"}
+                    </span>
+                    <div className="flex items-center gap-1 text-sm text-gray-500">
+                      <ShoppingBag className="w-4 h-4" />
+                      <span>{product.quantity || 10} in stock</span>
+                    </div>
                   </div>
+
+                  {/* Enhanced CTA Button */}
+                  <Link
+                    href={`/Women/${product.id}`}
+                    className="w-full py-4 text-center bg-gradient-to-r from-rose-600 to-pink-600 text-white rounded-2xl font-bold hover:from-rose-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-rose-500/25 flex items-center justify-center gap-2 group/btn"
+                  >
+                    <ShoppingBag className="w-5 h-5" />
+                    View Details
+                    <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform duration-300" />
+                  </Link>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Load More */}
-          <div className="text-center mt-12">
-            <button className="px-8 py-4 border-2 border-rose-600 text-rose-600 hover:bg-rose-600 hover:text-white font-bold rounded-2xl transition-all transform hover:-translate-y-1">
-              Load More Products
-            </button>
-          </div>
+          {/* Enhanced Empty State */}
+          {sortedProducts.length === 0 && (
+            <div className="text-center py-20">
+              <div className="text-8xl mb-6">👗</div>
+              <h3 className="text-2xl font-bold text-gray-800 mb-4">No Products Available</h3>
+              <p className="text-gray-600 text-lg max-w-md mx-auto">
+                We're updating our women's collection. Please check back soon for new arrivals!
+              </p>
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Features */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-          <div className="p-8">
-            <div className="w-20 h-20 bg-rose-100 rounded-3xl flex items-center justify-center text-rose-600 text-2xl mb-6 mx-auto">
-              🚚
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Free Shipping</h3>
-            <p className="text-gray-600">
-              Free delivery across India on orders above ₹1999
-            </p>
-          </div>
-
-          <div className="p-8">
-            <div className="w-20 h-20 bg-rose-100 rounded-3xl flex items-center justify-center text-rose-600 text-2xl mb-6 mx-auto">
-              ↩️
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Easy Returns</h3>
-            <p className="text-gray-600">
-              7-day easy return policy with no questions asked
-            </p>
-          </div>
-
-          <div className="p-8">
-            <div className="w-20 h-20 bg-rose-100 rounded-3xl flex items-center justify-center text-rose-600 text-2xl mb-6 mx-auto">
-              🛡️
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Quality Guarantee</h3>
-            <p className="text-gray-600">
-              100% quality-checked products with warranty
-            </p>
-          </div>
+      {/* Footer CTA */}
+      <section className="py-16 bg-gradient-to-r from-rose-500 to-pink-600 text-white">
+        <div className="max-w-4xl mx-auto text-center px-6">
+          <h2 className="text-4xl font-bold mb-4 flex items-center justify-center gap-3">
+            <Sparkles className="w-8 h-8" />
+            Ready to Shine?
+          </h2>
+          <p className="text-xl opacity-90 mb-8 max-w-2xl mx-auto">
+            Join thousands of stylish women who trust us for their fashion needs
+          </p>
+          <button className="px-10 py-4 bg-white text-rose-600 rounded-2xl font-bold text-lg hover:bg-gray-100 transition-colors duration-300 shadow-2xl transform hover:scale-105 flex items-center gap-3 mx-auto">
+            <ShoppingBag className="w-6 h-6" />
+            Start Shopping Now
+            <ArrowRight className="w-5 h-5" />
+          </button>
         </div>
       </section>
     </div>
