@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import axios from "axios";
 import { 
   Sparkles, 
@@ -16,14 +16,20 @@ import {
   TrendingUp,
   Clock,
   Shield,
-  Truck
+  Truck,
+  Plus,
+  Minus,
+  Check
 } from "lucide-react";
+import Footer from "../components/Footer";
 
 const WomensWear = () => {
+  const router = useRouter();
   const [products, setProducts] = useState([]);
   const [sortBy, setSortBy] = useState("featured");
   const [loading, setLoading] = useState(true);
   const [favorites, setFavorites] = useState(new Set());
+  const [cart, setCart] = useState({});
 
   const API_URL = "http://localhost:4000/api/products";
 
@@ -50,6 +56,12 @@ const WomensWear = () => {
       }
     };
 
+    // Load cart from localStorage
+    const savedCart = localStorage.getItem('womenCart');
+    if (savedCart) {
+      setCart(JSON.parse(savedCart));
+    }
+
     fetchProducts();
   }, []);
 
@@ -63,6 +75,59 @@ const WomensWear = () => {
       }
       return newFavorites;
     });
+  };
+
+  const addToCart = (product) => {
+    setCart(prev => {
+      const newCart = { ...prev };
+      if (newCart[product.id]) {
+        newCart[product.id] = {
+          ...newCart[product.id],
+          quantity: newCart[product.id].quantity + 1
+        };
+      } else {
+        newCart[product.id] = {
+          product,
+          quantity: 1
+        };
+      }
+      
+      // Save to localStorage
+      localStorage.setItem('womenCart', JSON.stringify(newCart));
+      return newCart;
+    });
+  };
+
+  const removeFromCart = (productId) => {
+    setCart(prev => {
+      const newCart = { ...prev };
+      if (newCart[productId]) {
+        if (newCart[productId].quantity > 1) {
+          newCart[productId] = {
+            ...newCart[productId],
+            quantity: newCart[productId].quantity - 1
+          };
+        } else {
+          delete newCart[productId];
+        }
+      }
+      
+      // Save to localStorage
+      localStorage.setItem('womenCart', JSON.stringify(newCart));
+      return newCart;
+    });
+  };
+
+  const getCartQuantity = (productId) => {
+    return cart[productId]?.quantity || 0;
+  };
+
+  const getTotalCartItems = () => {
+    return Object.values(cart).reduce((total, item) => total + item.quantity, 0);
+  };
+
+  const viewProductDetails = (productId) => {
+    router.push(`/Women/${productId}`);
   };
 
   const sortedProducts = [...products].sort((a, b) => {
@@ -119,6 +184,20 @@ const WomensWear = () => {
           <p className="text-xl md:text-2xl opacity-95 max-w-3xl mx-auto leading-relaxed mb-8">
             Discover exquisite dresses and outfits that celebrate your unique beauty and style
           </p>
+
+          {/* Cart Indicator */}
+          <div className="absolute top-6 right-6">
+            <div className="relative">
+              <button className="bg-white/20 backdrop-blur-sm p-4 rounded-2xl hover:bg-white/30 transition-colors duration-300">
+                <ShoppingBag className="w-6 h-6" />
+              </button>
+              {getTotalCartItems() > 0 && (
+                <span className="absolute -top-2 -right-2 bg-rose-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                  {getTotalCartItems()}
+                </span>
+              )}
+            </div>
+          </div>
 
           {/* Stats */}
           <div className="flex justify-center gap-12 mt-12">
@@ -202,87 +281,123 @@ const WomensWear = () => {
           </div>
 
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {sortedProducts.map((product) => (
-              <div
-                key={product.id}
-                className="group bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 overflow-hidden border border-gray-100"
-              >
-                {/* Enhanced Image Container */}
-                <div className="relative h-72 w-full bg-gradient-to-br from-rose-50 to-pink-50 overflow-hidden">
-                  <Image
-                    src={product.image || "/no-image.png"}
-                    alt={product.name}
-                    fill
-                    className="object-cover group-hover:scale-110 transition-transform duration-700"
-                    unoptimized
-                  />
-                  
-                  {/* Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  
-                  {/* Favorite Button */}
-                  <button
-                    onClick={() => toggleFavorite(product.id)}
-                    className={`absolute top-4 right-4 p-3 rounded-2xl backdrop-blur-sm transition-all duration-300 transform hover:scale-110 ${
-                      favorites.has(product.id)
-                        ? "bg-rose-500 text-white shadow-lg shadow-rose-500/25"
-                        : "bg-white/90 text-gray-600 hover:bg-rose-50 hover:text-rose-500"
-                    }`}
-                  >
-                    <Heart 
-                      className={`w-5 h-5 ${favorites.has(product.id) ? "fill-current" : ""}`} 
+            {sortedProducts.map((product) => {
+              const cartQuantity = getCartQuantity(product.id);
+              return (
+                <div
+                  key={product.id}
+                  className="group bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 overflow-hidden border border-gray-100"
+                >
+                  {/* Enhanced Image Container */}
+                  <div className="relative h-72 w-full bg-gradient-to-br from-rose-50 to-pink-50 overflow-hidden">
+                    <Image
+                      src={product.image || "/no-image.png"}
+                      alt={product.name}
+                      fill
+                      className="object-cover group-hover:scale-110 transition-transform duration-700"
+                      unoptimized
                     />
-                  </button>
+                    
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    
+                    {/* Favorite Button */}
+                    <button
+                      onClick={() => toggleFavorite(product.id)}
+                      className={`absolute top-4 right-4 p-3 rounded-2xl backdrop-blur-sm transition-all duration-300 transform hover:scale-110 ${
+                        favorites.has(product.id)
+                          ? "bg-rose-500 text-white shadow-lg shadow-rose-500/25"
+                          : "bg-white/90 text-gray-600 hover:bg-rose-50 hover:text-rose-500"
+                      }`}
+                    >
+                      <Heart 
+                        className={`w-5 h-5 ${favorites.has(product.id) ? "fill-current" : ""}`} 
+                      />
+                    </button>
 
-                  {/* Price Badge */}
-                  <div className="absolute top-4 left-4">
-                    <div className="bg-white/95 backdrop-blur-sm text-rose-600 px-4 py-2 rounded-2xl text-lg font-bold shadow-lg">
-                      ₹{product.price}
+                    {/* Price Badge */}
+                    <div className="absolute top-4 left-4">
+                      <div className="bg-white/95 backdrop-blur-sm text-rose-600 px-4 py-2 rounded-2xl text-lg font-bold shadow-lg">
+                        ₹{product.price}
+                      </div>
                     </div>
+
+                    {/* Rating Badge */}
+                    {product.rating && (
+                      <div className="absolute bottom-4 left-4 bg-black/70 text-white px-3 py-1.5 rounded-full text-sm font-semibold backdrop-blur-sm flex items-center gap-1">
+                        <Star className="w-4 h-4 fill-current" />
+                        {product.rating}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Rating Badge */}
-                  {product.rating && (
-                    <div className="absolute bottom-4 left-4 bg-black/70 text-white px-3 py-1.5 rounded-full text-sm font-semibold backdrop-blur-sm flex items-center gap-1">
-                      <Star className="w-4 h-4 fill-current" />
-                      {product.rating}
+                  {/* Enhanced Info Section */}
+                  <div className="p-6">
+                    <h3 className="text-xl font-bold text-gray-800 mb-3 group-hover:text-rose-600 transition-colors duration-300 line-clamp-2 leading-tight">
+                      {product.name}
+                    </h3>
+
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">
+                      {product.description || "Elegant women's fashion piece designed for comfort and style."}
+                    </p>
+
+                    {/* Category Tag */}
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="bg-gradient-to-r from-rose-100 to-pink-100 text-rose-700 px-3 py-1.5 rounded-full text-xs font-semibold">
+                        {product.subcategory?.name || "Fashion"}
+                      </span>
+                      <div className="flex items-center gap-1 text-sm text-gray-500">
+                        <ShoppingBag className="w-4 h-4" />
+                        <span>{product.quantity || 10} in stock</span>
+                      </div>
                     </div>
-                  )}
-                </div>
 
-                {/* Enhanced Info Section */}
-                <div className="p-6">
-                  <h3 className="text-xl font-bold text-gray-800 mb-3 group-hover:text-rose-600 transition-colors duration-300 line-clamp-2 leading-tight">
-                    {product.name}
-                  </h3>
+                    {/* Enhanced CTA Buttons */}
+                    <div className="space-y-3">
+                      {/* View Details Button */}
+                      <button
+                        onClick={() => viewProductDetails(product.id)}
+                        className="w-full py-3 text-center bg-gradient-to-r from-rose-600 to-pink-600 text-white rounded-2xl font-bold hover:from-rose-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-rose-500/25 flex items-center justify-center gap-2 group/btn"
+                      >
+                        <ShoppingBag className="w-5 h-5" />
+                        View Details
+                        <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform duration-300" />
+                      </button>
 
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">
-                    {product.description || "Elegant women's fashion piece designed for comfort and style."}
-                  </p>
-
-                  {/* Category Tag */}
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="bg-gradient-to-r from-rose-100 to-pink-100 text-rose-700 px-3 py-1.5 rounded-full text-xs font-semibold">
-                      {product.subcategory?.name || "Fashion"}
-                    </span>
-                    <div className="flex items-center gap-1 text-sm text-gray-500">
-                      <ShoppingBag className="w-4 h-4" />
-                      <span>{product.quantity || 10} in stock</span>
+                      {/* Add to Cart Section */}
+                      {cartQuantity > 0 ? (
+                        <div className="flex items-center justify-between bg-rose-50 rounded-2xl p-3 border border-rose-100">
+                          <button
+                            onClick={() => removeFromCart(product.id)}
+                            className="p-2 bg-rose-500 text-white rounded-xl hover:bg-rose-600 transition-colors"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </button>
+                          <span className="font-bold text-rose-700 flex items-center gap-2">
+                            <Check className="w-4 h-4 text-green-500" />
+                            {cartQuantity} in cart
+                          </span>
+                          <button
+                            onClick={() => addToCart(product)}
+                            className="p-2 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-colors"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => addToCart(product)}
+                          className="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl font-bold hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-green-500/25 flex items-center justify-center gap-2"
+                        >
+                          <ShoppingBag className="w-5 h-5" />
+                          Add to Cart
+                        </button>
+                      )}
                     </div>
                   </div>
-
-                  {/* Enhanced CTA Button */}
-                  <Link
-                    href={`/Women/${product.id}`}
-                    className="w-full py-4 text-center bg-gradient-to-r from-rose-600 to-pink-600 text-white rounded-2xl font-bold hover:from-rose-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-rose-500/25 flex items-center justify-center gap-2 group/btn"
-                  >
-                    <ShoppingBag className="w-5 h-5" />
-                    View Details
-                    <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform duration-300" />
-                  </Link>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Enhanced Empty State */}
@@ -315,6 +430,7 @@ const WomensWear = () => {
           </button>
         </div>
       </section>
+      <Footer/>
     </div>
   );
 };

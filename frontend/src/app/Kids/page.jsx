@@ -1,7 +1,8 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import Footer from "../components/Footer";
 
 const apiUrl = "http://localhost:4000/api/products";
 
@@ -68,12 +69,15 @@ const LoadingSkeleton = () => (
 );
 
 export default function KidsWear() {
+  const router = useRouter();
   const [products, setProducts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [sortBy, setSortBy] = useState("featured");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [visibleProducts, setVisibleProducts] = useState(8);
+  const [cart, setCart] = useState({});
+  const [favorites, setFavorites] = useState(new Set());
 
   useEffect(() => {
     let mounted = true;
@@ -100,6 +104,12 @@ export default function KidsWear() {
         if (mounted) setLoading(false);
       }
     };
+
+    // Load cart from localStorage
+    const savedCart = localStorage.getItem('kidsCart');
+    if (savedCart) {
+      setCart(JSON.parse(savedCart));
+    }
 
     fetchProducts();
 
@@ -139,6 +149,71 @@ export default function KidsWear() {
     const cat = (p._categoryName || "").toLowerCase();
     return cat === "kids" || cat === "kid" || (p._subcategoryName || "").toLowerCase() === "kids";
   });
+
+  const addToCart = (product) => {
+    setCart(prev => {
+      const newCart = { ...prev };
+      if (newCart[product.id]) {
+        newCart[product.id] = {
+          ...newCart[product.id],
+          quantity: newCart[product.id].quantity + 1
+        };
+      } else {
+        newCart[product.id] = {
+          product,
+          quantity: 1
+        };
+      }
+      
+      // Save to localStorage
+      localStorage.setItem('kidsCart', JSON.stringify(newCart));
+      return newCart;
+    });
+  };
+
+  const removeFromCart = (productId) => {
+    setCart(prev => {
+      const newCart = { ...prev };
+      if (newCart[productId]) {
+        if (newCart[productId].quantity > 1) {
+          newCart[productId] = {
+            ...newCart[productId],
+            quantity: newCart[productId].quantity - 1
+          };
+        } else {
+          delete newCart[productId];
+        }
+      }
+      
+      // Save to localStorage
+      localStorage.setItem('kidsCart', JSON.stringify(newCart));
+      return newCart;
+    });
+  };
+
+  const getCartQuantity = (productId) => {
+    return cart[productId]?.quantity || 0;
+  };
+
+  const getTotalCartItems = () => {
+    return Object.values(cart).reduce((total, item) => total + item.quantity, 0);
+  };
+
+  const toggleFavorite = (productId) => {
+    setFavorites(prev => {
+      const newFavorites = new Set(prev);
+      if (newFavorites.has(productId)) {
+        newFavorites.delete(productId);
+      } else {
+        newFavorites.add(productId);
+      }
+      return newFavorites;
+    });
+  };
+
+  const viewProductDetails = (productId) => {
+    router.push(`/Kids/${productId}`);
+  };
 
   const loadMore = () => {
     setVisibleProducts(prev => prev + 8);
@@ -182,6 +257,20 @@ export default function KidsWear() {
           <p className="text-xl md:text-2xl opacity-95 max-w-3xl mx-auto leading-relaxed mb-8">
             Discover adorable, comfortable, and stylish outfits that make every day special for your little stars!
           </p>
+
+          {/* Cart Indicator */}
+          <div className="absolute top-6 right-6">
+            <div className="relative">
+              <button className="bg-white/20 backdrop-blur-sm p-4 rounded-2xl hover:bg-white/30 transition-colors duration-300">
+                <span className="text-xl">🛒</span>
+              </button>
+              {getTotalCartItems() > 0 && (
+                <span className="absolute -top-2 -right-2 bg-pink-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                  {getTotalCartItems()}
+                </span>
+              )}
+            </div>
+          </div>
           
           {/* Stats */}
           <div className="flex justify-center gap-12 mt-12">
@@ -277,76 +366,125 @@ export default function KidsWear() {
           ) : (
             <>
               <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-                {kidsOnly.slice(0, visibleProducts).map((item) => (
-                  <div
-                    key={item.id}
-                    className="group bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 overflow-hidden border border-gray-100"
-                  >
-                    {/* Enhanced Image Container */}
-                    <div className="relative h-72 w-full bg-gradient-to-br from-pink-50 to-purple-50 overflow-hidden">
-                      {item._imageUrl ? (
-                        <>
-                          <Image
-                            src={item._imageUrl}
-                            alt={item.name || "product"}
-                            fill
-                            className="object-cover group-hover:scale-110 transition-transform duration-700"
-                            unoptimized
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                        </>
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-400">
-                          <span className="text-4xl">👕</span>
+                {kidsOnly.slice(0, visibleProducts).map((item) => {
+                  const cartQuantity = getCartQuantity(item.id);
+                  return (
+                    <div
+                      key={item.id}
+                      className="group bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 overflow-hidden border border-gray-100"
+                    >
+                      {/* Enhanced Image Container */}
+                      <div className="relative h-72 w-full bg-gradient-to-br from-pink-50 to-purple-50 overflow-hidden">
+                        {item._imageUrl ? (
+                          <>
+                            <Image
+                              src={item._imageUrl}
+                              alt={item.name || "product"}
+                              fill
+                              className="object-cover group-hover:scale-110 transition-transform duration-700"
+                              unoptimized
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                          </>
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-400">
+                            <span className="text-4xl">👕</span>
+                          </div>
+                        )}
+                        
+                        {/* Favorite Button */}
+                        <button
+                          onClick={() => toggleFavorite(item.id)}
+                          className={`absolute top-4 right-4 p-3 rounded-2xl backdrop-blur-sm transition-all duration-300 transform hover:scale-110 ${
+                            favorites.has(item.id)
+                              ? "bg-pink-500 text-white shadow-lg shadow-pink-500/25"
+                              : "bg-white/90 text-gray-600 hover:bg-pink-50 hover:text-pink-500"
+                          }`}
+                        >
+                          <span className="text-lg">{favorites.has(item.id) ? "❤️" : "🤍"}</span>
+                        </button>
+
+                        {/* Price Badge */}
+                        <div className="absolute top-4 left-4">
+                          <div className="bg-white/95 backdrop-blur-sm text-pink-600 px-4 py-2 rounded-2xl text-lg font-bold shadow-lg">
+                            ₹{item.price}
+                          </div>
                         </div>
-                      )}
-                      
-                      {/* Price Badge */}
-                      <div className="absolute top-4 right-4">
-                        <div className="bg-white/95 backdrop-blur-sm text-pink-600 px-4 py-2 rounded-2xl text-lg font-bold shadow-lg">
-                          ₹{item.price}
-                        </div>
+
+                        {/* Rating Badge */}
+                        {item.rating && (
+                          <div className="absolute bottom-4 left-4 bg-black/70 text-white px-3 py-1 rounded-full text-sm font-semibold backdrop-blur-sm">
+                            ⭐ {item.rating}
+                          </div>
+                        )}
                       </div>
 
-                      {/* Rating Badge */}
-                      {item.rating && (
-                        <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-1 rounded-full text-sm font-semibold backdrop-blur-sm">
-                          ⭐ {item.rating}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Enhanced Info Section */}
-                    <div className="p-6">
-                      <div className="flex items-start justify-between mb-3">
-                        <span className="bg-gradient-to-r from-pink-100 to-purple-100 text-pink-700 px-4 py-1.5 rounded-full text-sm font-semibold">
-                          {item._subcategoryName || item._categoryName || "Uncategorized"}
-                        </span>
-                        <StarRating rating={item.rating || 0} />
-                      </div>
-
-                      <h3 className="text-xl font-bold text-gray-800 mb-3 group-hover:text-pink-600 transition-colors duration-300 line-clamp-2 leading-tight">
-                        {item.name}
-                      </h3>
-
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                          <span className="bg-green-100 text-green-600 px-2 py-1 rounded-full">
-                            {item.quantity ?? 0} in stock
+                      {/* Enhanced Info Section */}
+                      <div className="p-6">
+                        <div className="flex items-start justify-between mb-3">
+                          <span className="bg-gradient-to-r from-pink-100 to-purple-100 text-pink-700 px-4 py-1.5 rounded-full text-sm font-semibold">
+                            {item._subcategoryName || item._categoryName || "Uncategorized"}
                           </span>
+                          <StarRating rating={item.rating || 0} />
+                        </div>
+
+                        <h3 className="text-xl font-bold text-gray-800 mb-3 group-hover:text-pink-600 transition-colors duration-300 line-clamp-2 leading-tight">
+                          {item.name}
+                        </h3>
+
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <span className="bg-green-100 text-green-600 px-2 py-1 rounded-full">
+                              {item.quantity ?? 0} in stock
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Enhanced CTA Buttons */}
+                        <div className="space-y-3">
+                          {/* View Details Button */}
+                          <button
+                            onClick={() => viewProductDetails(item.id)}
+                            className="w-full py-3 text-center bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-2xl font-bold hover:from-pink-600 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-pink-500/25 flex items-center justify-center gap-2 group/btn"
+                          >
+                            View Details
+                            <span className="group-hover/btn:translate-x-1 transition-transform duration-300">→</span>
+                          </button>
+
+                          {/* Add to Cart Section */}
+                          {cartQuantity > 0 ? (
+                            <div className="flex items-center justify-between bg-pink-50 rounded-2xl p-3 border border-pink-100">
+                              <button
+                                onClick={() => removeFromCart(item.id)}
+                                className="p-2 bg-pink-500 text-white rounded-xl hover:bg-pink-600 transition-colors"
+                              >
+                                <span className="text-sm">➖</span>
+                              </button>
+                              <span className="font-bold text-pink-700 flex items-center gap-2">
+                                <span className="text-green-500">✓</span>
+                                {cartQuantity} in cart
+                              </span>
+                              <button
+                                onClick={() => addToCart(item)}
+                                className="p-2 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-colors"
+                              >
+                                <span className="text-sm">➕</span>
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => addToCart(item)}
+                              className="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl font-bold hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-green-500/25 flex items-center justify-center gap-2"
+                            >
+                              <span className="text-lg">🛒</span>
+                              Add to Cart
+                            </button>
+                          )}
                         </div>
                       </div>
-
-                      <Link
-                        href={`/product/${item.id}`}
-                        className="w-full py-4 text-center bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-2xl font-bold hover:from-pink-600 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-pink-500/25 flex items-center justify-center gap-2 group/btn"
-                      >
-                        View Details
-                        <span className="group-hover/btn:translate-x-1 transition-transform duration-300">→</span>
-                      </Link>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Enhanced Load More */}
@@ -384,6 +522,7 @@ export default function KidsWear() {
           </button>
         </div>
       </section>
+      <Footer/>
     </div>
   );
 }

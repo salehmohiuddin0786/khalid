@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import Footer from "../components/Footer";
 
 const Collection = () => {
   const [products, setProducts] = useState([]);
@@ -384,6 +385,7 @@ const Collection = () => {
           </button>
         </div>
       </section>
+      <Footer/>
     </div>
   );
 };

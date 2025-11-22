@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { 
   Shirt, 
   Filter, 
@@ -16,15 +17,20 @@ import {
   Clock,
   Sparkles,
   BadgeCheck,
-  Zap
+  Zap,
+  Plus,
+  Minus
 } from "lucide-react";
+import Footer from "../components/Footer";
 
 const MensWear = () => {
+  const router = useRouter();
   const [products, setProducts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [sortBy, setSortBy] = useState("featured");
   const [loading, setLoading] = useState(true);
   const [favorites, setFavorites] = useState(new Set());
+  const [cart, setCart] = useState({});
   const categories = ["All", "shirts", "pants", "jeans", "tshirts"];
 
   useEffect(() => {
@@ -82,6 +88,53 @@ const MensWear = () => {
     });
   };
 
+  const addToCart = (product) => {
+    setCart(prev => {
+      const newCart = { ...prev };
+      if (newCart[product.id]) {
+        newCart[product.id] = {
+          ...newCart[product.id],
+          quantity: newCart[product.id].quantity + 1
+        };
+      } else {
+        newCart[product.id] = {
+          product,
+          quantity: 1
+        };
+      }
+      return newCart;
+    });
+  };
+
+  const removeFromCart = (productId) => {
+    setCart(prev => {
+      const newCart = { ...prev };
+      if (newCart[productId]) {
+        if (newCart[productId].quantity > 1) {
+          newCart[productId] = {
+            ...newCart[productId],
+            quantity: newCart[productId].quantity - 1
+          };
+        } else {
+          delete newCart[productId];
+        }
+      }
+      return newCart;
+    });
+  };
+
+  const getCartQuantity = (productId) => {
+    return cart[productId]?.quantity || 0;
+  };
+
+  const getTotalCartItems = () => {
+    return Object.values(cart).reduce((total, item) => total + item.quantity, 0);
+  };
+
+  const viewProductDetails = (productId) => {
+    router.push(`/Mens/${productId}`);
+  };
+
   const getImageUrl = (img) =>
     img?.startsWith("http")
       ? img
@@ -128,6 +181,20 @@ const MensWear = () => {
           <p className="text-xl md:text-2xl opacity-95 max-w-3xl mx-auto leading-relaxed mb-8">
             Premium men's fashion that combines style, comfort, and sophistication
           </p>
+
+          {/* Cart Indicator */}
+          <div className="absolute top-6 right-6">
+            <div className="relative">
+              <button className="bg-white/20 backdrop-blur-sm p-4 rounded-2xl hover:bg-white/30 transition-colors duration-300">
+                <ShoppingBag className="w-6 h-6" />
+              </button>
+              {getTotalCartItems() > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                  {getTotalCartItems()}
+                </span>
+              )}
+            </div>
+          </div>
 
           {/* Stats */}
           <div className="flex justify-center gap-12 mt-12">
@@ -230,85 +297,118 @@ const MensWear = () => {
 
           {sortedProducts.length > 0 ? (
             <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-              {sortedProducts.map((item) => (
-                <div
-                  key={item.id}
-                  className="group bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 overflow-hidden border border-gray-100"
-                >
-                  {/* Enhanced Image Container */}
-                  <div className="relative h-72 w-full bg-gradient-to-br from-blue-50 to-cyan-50 overflow-hidden">
-                    <Image
-                      src={getImageUrl(item.image)}
-                      alt={item.name}
-                      fill
-                      className="object-cover group-hover:scale-110 transition-transform duration-700"
-                    />
-                    
-                    {/* Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    
-                    {/* Favorite Button */}
-                    <button
-                      onClick={() => toggleFavorite(item.id)}
-                      className={`absolute top-4 right-4 p-3 rounded-2xl backdrop-blur-sm transition-all duration-300 transform hover:scale-110 ${
-                        favorites.has(item.id)
-                          ? "bg-blue-500 text-white shadow-lg shadow-blue-500/25"
-                          : "bg-white/90 text-gray-600 hover:bg-blue-50 hover:text-blue-500"
-                      }`}
-                    >
-                      <Heart 
-                        className={`w-5 h-5 ${favorites.has(item.id) ? "fill-current" : ""}`} 
+              {sortedProducts.map((item) => {
+                const cartQuantity = getCartQuantity(item.id);
+                return (
+                  <div
+                    key={item.id}
+                    className="group bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 overflow-hidden border border-gray-100"
+                  >
+                    {/* Enhanced Image Container */}
+                    <div className="relative h-72 w-full bg-gradient-to-br from-blue-50 to-cyan-50 overflow-hidden">
+                      <Image
+                        src={getImageUrl(item.image)}
+                        alt={item.name}
+                        fill
+                        className="object-cover group-hover:scale-110 transition-transform duration-700"
                       />
-                    </button>
+                      
+                      {/* Gradient Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      
+                      {/* Favorite Button */}
+                      <button
+                        onClick={() => toggleFavorite(item.id)}
+                        className={`absolute top-4 right-4 p-3 rounded-2xl backdrop-blur-sm transition-all duration-300 transform hover:scale-110 ${
+                          favorites.has(item.id)
+                            ? "bg-blue-500 text-white shadow-lg shadow-blue-500/25"
+                            : "bg-white/90 text-gray-600 hover:bg-blue-50 hover:text-blue-500"
+                        }`}
+                      >
+                        <Heart 
+                          className={`w-5 h-5 ${favorites.has(item.id) ? "fill-current" : ""}`} 
+                        />
+                      </button>
 
-                    {/* Price Badge */}
-                    <div className="absolute top-4 left-4">
-                      <div className="bg-white/95 backdrop-blur-sm text-blue-600 px-4 py-2 rounded-2xl text-lg font-bold shadow-lg">
-                        ₹{item.price}
+                      {/* Price Badge */}
+                      <div className="absolute top-4 left-4">
+                        <div className="bg-white/95 backdrop-blur-sm text-blue-600 px-4 py-2 rounded-2xl text-lg font-bold shadow-lg">
+                          ₹{item.price}
+                        </div>
                       </div>
+
+                      {/* Rating Badge */}
+                      {item.rating && (
+                        <div className="absolute bottom-4 left-4 bg-black/70 text-white px-3 py-1.5 rounded-full text-sm font-semibold backdrop-blur-sm flex items-center gap-1">
+                          <Star className="w-4 h-4 fill-current" />
+                          {item.rating}
+                        </div>
+                      )}
                     </div>
 
-                    {/* Rating Badge */}
-                    {item.rating && (
-                      <div className="absolute bottom-4 left-4 bg-black/70 text-white px-3 py-1.5 rounded-full text-sm font-semibold backdrop-blur-sm flex items-center gap-1">
-                        <Star className="w-4 h-4 fill-current" />
-                        {item.rating}
+                    {/* Enhanced Info Section */}
+                    <div className="p-6">
+                      <div className="flex items-start justify-between mb-3">
+                        <span className="bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-700 px-3 py-1.5 rounded-full text-xs font-semibold">
+                          {item.subcategory?.name || "Mens Wear"}
+                        </span>
+                        <div className="flex items-center gap-1 text-sm text-gray-500">
+                          <ShoppingBag className="w-4 h-4" />
+                          <span>{item.quantity || 10} in stock</span>
+                        </div>
                       </div>
-                    )}
-                  </div>
 
-                  {/* Enhanced Info Section */}
-                  <div className="p-6">
-                    <div className="flex items-start justify-between mb-3">
-                      <span className="bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-700 px-3 py-1.5 rounded-full text-xs font-semibold">
-                        {item.subcategory?.name || "Mens Wear"}
-                      </span>
-                      <div className="flex items-center gap-1 text-sm text-gray-500">
-                        <ShoppingBag className="w-4 h-4" />
-                        <span>{item.quantity || 10} in stock</span>
+                      <h3 className="text-xl font-bold text-gray-800 mb-3 group-hover:text-blue-600 transition-colors duration-300 line-clamp-2 leading-tight">
+                        {item.name}
+                      </h3>
+
+                      <p className="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">
+                        {item.description || "Premium men's fashion designed for style and comfort."}
+                      </p>
+
+                      {/* Enhanced CTA Buttons */}
+                      <div className="space-y-3">
+                        {/* View Details Button */}
+                        <button
+                          onClick={() => viewProductDetails(item.id)}
+                          className="w-full py-3 text-center bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-2xl font-bold hover:from-blue-700 hover:to-cyan-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-blue-500/25 flex items-center justify-center gap-2 group/btn"
+                        >
+                          <ShoppingBag className="w-5 h-5" />
+                          View Details
+                          <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform duration-300" />
+                        </button>
+
+                        {/* Add to Cart Section */}
+                        {cartQuantity > 0 ? (
+                          <div className="flex items-center justify-between bg-gray-50 rounded-2xl p-3">
+                            <button
+                              onClick={() => removeFromCart(item.id)}
+                              className="p-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors"
+                            >
+                              <Minus className="w-4 h-4" />
+                            </button>
+                            <span className="font-bold text-gray-800">{cartQuantity} in cart</span>
+                            <button
+                              onClick={() => addToCart(item)}
+                              className="p-2 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-colors"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => addToCart(item)}
+                            className="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl font-bold hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-green-500/25 flex items-center justify-center gap-2"
+                          >
+                            <ShoppingBag className="w-5 h-5" />
+                            Add to Cart
+                          </button>
+                        )}
                       </div>
                     </div>
-
-                    <h3 className="text-xl font-bold text-gray-800 mb-3 group-hover:text-blue-600 transition-colors duration-300 line-clamp-2 leading-tight">
-                      {item.name}
-                    </h3>
-
-                    <p className="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">
-                      {item.description || "Premium men's fashion designed for style and comfort."}
-                    </p>
-
-                    {/* Enhanced CTA Button */}
-                    <a
-                      href={`/product/${item.id}`}
-                      className="w-full py-4 text-center bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-2xl font-bold hover:from-blue-700 hover:to-cyan-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-blue-500/25 flex items-center justify-center gap-2 group/btn"
-                    >
-                      <ShoppingBag className="w-5 h-5" />
-                      View Details
-                      <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform duration-300" />
-                    </a>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             /* Enhanced Empty State */
@@ -347,6 +447,7 @@ const MensWear = () => {
           </button>
         </div>
       </section>
+      <Footer/>
     </div>
   );
 };

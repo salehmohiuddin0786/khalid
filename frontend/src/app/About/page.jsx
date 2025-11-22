@@ -1,6 +1,7 @@
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import Footer from '../components/Footer';
 
 const AboutUs = () => {
   const stats = [
@@ -307,6 +308,7 @@ const AboutUs = () => {
           </div>
         </div>
       </section>
+      <Footer/>
     </div>
   );
 };
